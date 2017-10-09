@@ -5,7 +5,7 @@
 
 ## Run:
 - download `model-viewer.jar` under `release`
-- install java
+- install [java](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
 - run `java -jar model-viewer.jar -Xmx2g`
 
 ## Usage:
