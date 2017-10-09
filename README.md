@@ -4,7 +4,7 @@
  For further information about the model and the surrounding theory and software please visit [http://gravis.dmi.unibas.ch/PMM](http://gravis.dmi.unibas.ch/PMM)
 
 ## Run:
-- download `model-viewer.jar`
+- download `model-viewer.jar` under `release`
 - install java
 - run `java -jar model-viewer.jar -Xmx2g`
 
