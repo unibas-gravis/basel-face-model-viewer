@@ -7,7 +7,7 @@
 - installed [Java](http://www.oracle.com/technetwork/java/javase/downloads/index.html) (Version 8.0 or higher recommended)
 - installed [sbt](http://www.scala-sbt.org/release/tutorial/Setup.html) (only for compiling from sources)
 
-## Run:
+## Run (precompiled):
 - download `model-viewer.jar` under `release`
 - run `java -jar model-viewer.jar -Xmx2g`
 
@@ -17,10 +17,9 @@
 - sliders are ordered according to the principal components
 - press `Ctrl` to move pose with mouse (first click on face to activate the frame)
  
-## Installation (only needed for adapting code):
+## For Developers:
 - clone repository
-- clone project
-- compile and run `sbt run -mem 2000`
+- compile and run using `sbt run -mem 2000`
 
 ## Maintainer
 
