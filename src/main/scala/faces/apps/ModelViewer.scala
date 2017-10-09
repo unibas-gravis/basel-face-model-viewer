@@ -38,7 +38,7 @@ object ModelViewer extends App {
   // - is directory, open file chooser there
   // - open file chooser at default location
 
-  final val DEFAULT_DIR = new File("/export/faces/model/")
+  final val DEFAULT_DIR = new File(".")
 
   val modelFile: Option[File] = if (args.size>0) {
     val arg = args(0)
