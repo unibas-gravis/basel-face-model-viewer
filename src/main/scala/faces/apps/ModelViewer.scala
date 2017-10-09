@@ -93,14 +93,14 @@ case class SimpleModelViewer(
     case _ => model.neutralModel.shape.rank
   }
 
-  val colorRank = maximalShapeRank match {
+  val colorRank = maximalColorRank match {
     case Some(rank) => min(model.neutralModel.color.rank, rank)
     case _ => model.neutralModel.color.rank
   }
 
-  val expRank = maximalShapeRank match {
-    case Some(rank) => min(model.expressionModel.get.expression.rank, rank)
-    case _ => model.expressionModel.get.expression.rank
+  val expRank = maximalExpressionRank match {
+    case Some(rank) => try{min(model.expressionModel.get.expression.rank, rank)} catch {case e: Exception => 0}
+    case _ => try{model.expressionModel.get.expression.rank} catch {case e: Exception => 0}
   }
 
   val renderer = MoMoRenderer(model, RGBA.BlackTransparent).cached(5)
