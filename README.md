@@ -4,8 +4,8 @@
  For further information about the model and the surrounding theory and software please visit [http://gravis.dmi.unibas.ch/PMM](http://gravis.dmi.unibas.ch/PMM)
 
 ## Run:
+- install [java](http://www.oracle.com/technetwork/java/javase/downloads/index.html) (Java 8 or higher recommended)
 - download `model-viewer.jar` under `release`
-- install [java](http://www.oracle.com/technetwork/java/javase/downloads/index.html)
 - run `java -jar model-viewer.jar -Xmx2g`
 
 ## Usage:
@@ -23,7 +23,7 @@
 ## Maintainer
 
 - Bernhard Egger <bernhard.egger@unibas.ch>
-- Andreas Forster <andreas.forster@unibas.ch>
+- Andreas Morel-Forster <andreas.forster@unibas.ch>
 
 ## Dependencies
 
