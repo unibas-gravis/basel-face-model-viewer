@@ -16,7 +16,7 @@
 - lower random and reset button will update all model parameters
 - the button `load RPS` will load rendering parameters from a .rps file (currently only shape, color and expression)
 - sliders are ordered according to the principal components
-- the maximal paarameter value corresponding to the sliders can be adjusted
+- the maximal parameter value corresponding to the sliders can be adjusted
 - press `Ctrl` to move pose with mouse (first click on face to activate the frame)
  
 ## For Developers:
