@@ -16,8 +16,12 @@
 package faces.apps
 
 import java.awt.Dimension
+import java.awt.event.{ActionEvent, ActionListener}
 import java.io.File
 import javax.swing._
+import javax.swing.event.{ChangeEvent, ChangeListener}
+import javax.swing.text.NumberFormatter
+import java.text.NumberFormat
 
 import breeze.linalg.min
 import scalismo.faces.gui.{GUIBlock, GUIFrame, ImagePanel}
@@ -29,9 +33,10 @@ import scalismo.faces.color.{RGB, RGBA}
 import scalismo.faces.image.PixelImage
 import scalismo.faces.io.MoMoIO
 import scalismo.utils.Random
+import spire.syntax.field
 
 import scala.reflect.io.Path
-import scala.util.{ Success, Failure}
+import scala.util.{Failure, Success}
 
 object ModelViewer extends App {
 
@@ -76,7 +81,7 @@ case class SimpleModelViewer(
   modelFile: File,
   imageWidth: Int = 512,
   imageHeight: Int = 512,
-  maximalSigma: Int = 1,
+  maximalSliderValue: Int = 1,
   maximalShapeRank: Option[Int] = None,
   maximalColorRank: Option[Int] = None,
   maximalExpressionRank: Option[Int] = None
@@ -86,7 +91,6 @@ case class SimpleModelViewer(
   val seed = 1024L
   implicit val rnd = new Random(seed)
 
-  val sigFactor = 100
 
   val model = MoMoIO.read(modelFile, "").get
 
@@ -115,13 +119,39 @@ case class SimpleModelViewer(
 
   var changingSliders = false
 
+  val sliderSteps = 1000
+  var maximalSigma: Int = maximalSliderValue
+  var maximalSigmaSpinner = {
+    val spinner = new JSpinner(new SpinnerNumberModel(maximalSigma,0,999,1))
+    spinner.addChangeListener( new ChangeListener() {
+      override def stateChanged(e: ChangeEvent) = {
+        val newMaxSigma = spinner.getModel().asInstanceOf[SpinnerNumberModel].getNumber.intValue()
+        maximalSigma = math.abs(newMaxSigma)
+        setShapeSliders
+        setColorSliders
+        setExpSliders
+      }
+    })
+    spinner.setToolTipText("maximal slider value")
+    spinner
+  }
+
+
+  def sliderToParam(value: Int): Double = {
+    maximalSigma * value.toDouble/sliderSteps
+  }
+
+  def paramToSlider(value: Double): Int = {
+    (value / maximalSigma * sliderSteps).toInt
+  }
+
   val bg = PixelImage(imageWidth, imageHeight, (_, _) => RGBA.Black)
 
   val imageWindow = ImagePanel(renderWithBG(init))
 
   //--- SHAPE -----
   val shapeSlider: IndexedSeq[JSlider] = for (n <- 0 until shapeRank) yield {
-    GUIBlock.slider(-maximalSigma * sigFactor, maximalSigma * sigFactor, 0, f => {
+    GUIBlock.slider(-sliderSteps, sliderSteps, 0, f => {
       updateShape(n, f)
       updateImage()
     })
@@ -139,11 +169,13 @@ case class SimpleModelViewer(
   val resetShapeButton = GUIBlock.button("reset", {
     resetShape(); updateImage()
   })
+  rndShapeButton.setToolTipText("draw each shape parameter at random from a standard normal distribution")
+  resetShapeButton.setToolTipText("set all shape parameters to zero")
 
   def updateShape(n: Int, value: Int): Unit = {
     init = init.copy(momo = init.momo.copy(shape = {
       val current = init.momo.shape
-      current.zipWithIndex.map { case (v, i) => if (i == n) value.toDouble / sigFactor else v }
+      current.zipWithIndex.map { case (v, i) => if (i == n) sliderToParam(value) else v }
     }))
   }
 
@@ -169,14 +201,14 @@ case class SimpleModelViewer(
   def setShapeSliders() = {
     changingSliders = true
     (0 until shapeRank).foreach(i => {
-      shapeSlider(i).setValue(Math.round(init.momo.shape(i) * sigFactor).toInt)
+      shapeSlider(i).setValue(paramToSlider(init.momo.shape(i)))
     })
     changingSliders = false
   }
 
   //--- COLOR -----
   val colorSlider: IndexedSeq[JSlider] = for (n <- 0 until colorRank) yield {
-    GUIBlock.slider(-maximalSigma * sigFactor, maximalSigma * sigFactor, 0, f => {
+    GUIBlock.slider(-sliderSteps, sliderSteps, 0, f => {
       updateColor(n, f)
       updateImage()
     })
@@ -195,11 +227,13 @@ case class SimpleModelViewer(
   val resetColorButton = GUIBlock.button("reset", {
     resetColor(); updateImage()
   })
+  rndColorButton.setToolTipText("draw each color parameter at random from a standard normal distribution")
+  resetColorButton.setToolTipText("set all color parameters to zero")
 
   def updateColor(n: Int, value: Int): Unit = {
     init = init.copy(momo = init.momo.copy(color = {
       val current = init.momo.color
-      current.zipWithIndex.map { case (v, i) => if (i == n) value.toDouble / sigFactor else v }
+      current.zipWithIndex.map { case (v, i) => if (i == n) sliderToParam(value) else v }
     }))
   }
 
@@ -225,14 +259,14 @@ case class SimpleModelViewer(
   def setColorSliders() = {
     changingSliders = true
     (0 until colorRank).foreach(i => {
-      colorSlider(i).setValue(Math.round(init.momo.color(i) * sigFactor).toInt)
+      colorSlider(i).setValue(paramToSlider(init.momo.color(i)))
     })
     changingSliders = false
   }
 
   //--- EXPRESSION -----
   val expSlider: IndexedSeq[JSlider] = for (n <- 0 until expRank)yield {
-    GUIBlock.slider(-maximalSigma * sigFactor, maximalSigma * sigFactor, 0, f => {
+    GUIBlock.slider(-sliderSteps, sliderSteps, 0, f => {
       updateExpression(n, f)
       updateImage()
     })
@@ -251,10 +285,13 @@ case class SimpleModelViewer(
     resetExpression(); updateImage()
   })
 
+  rndExpButton.setToolTipText("draw each expression parameter at random from a standard normal distribution")
+  resetExpButton.setToolTipText("set all expression parameters to zero")
+
   def updateExpression(n: Int, value: Int): Unit = {
     init = init.copy(momo = init.momo.copy(expression = {
       val current = init.momo.expression
-      current.zipWithIndex.map { case (v, i) => if (i == n) value.toDouble / sigFactor else v }
+      current.zipWithIndex.map { case (v, i) => if (i == n) sliderToParam(value) else v }
     }))
   }
 
@@ -280,7 +317,7 @@ case class SimpleModelViewer(
   def setExpSliders() = {
     changingSliders = true
     (0 until expRank).foreach(i => {
-      expSlider(i).setValue(Math.round(init.momo.expression(i) * sigFactor).toInt)
+      expSlider(i).setValue(paramToSlider(init.momo.expression(i)))
     })
     changingSliders = false
   }
@@ -293,6 +330,9 @@ case class SimpleModelViewer(
   val resetButton = GUIBlock.button("reset", {
     resetShape(); resetColor(); resetExpression(); updateImage()
   })
+
+  randomButton.setToolTipText("draw each model parameter at random from a standard normal distribution")
+  resetButton.setToolTipText("set all model parameters to zero")
 
   //loads parameters from file
   //TODO: load other parameters than the momo shape, expr and color
@@ -330,6 +370,14 @@ case class SimpleModelViewer(
     {
       for {rpsFile <- askUserForRPSFile(new File("."))
            rpsParams <- RenderParameterIO.read(rpsFile)} {
+        val maxSigma = (rpsParams.momo.shape ++ rpsParams.momo.color ++ rpsParams.momo.expression).map(math.abs(_)).max
+        if ( maxSigma > maximalSigma ) {
+          maximalSigma = math.ceil(maxSigma).toInt
+          maximalSigmaSpinner.setValue(maximalSigma)
+          setShapeSliders()
+          setColorSliders()
+          setExpSliders()
+        }
         updateModelParameters(rpsParams)
       }
     }
@@ -355,7 +403,7 @@ case class SimpleModelViewer(
   controls.addTab("expression", GUIBlock.stack(expScrollPane, GUIBlock.shelf(rndExpButton, resetExpButton)))
 
   val guiFrame: GUIFrame = GUIBlock.stack(
-    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(randomButton, resetButton, loadButton)))
+    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, loadButton)))
   ).displayInNewFrame("MoMo-Viewer")
 
 
