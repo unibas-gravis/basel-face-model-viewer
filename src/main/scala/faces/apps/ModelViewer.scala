@@ -296,58 +296,44 @@ case class SimpleModelViewer(
 
   //loads parameters from file
   //TODO: load other parameters than the momo shape, expr and color
-  val loadButton= GUIBlock.button("load RPS", {
-    def askUserForRPSFile(dir: File): Option[File] = {
-      val jFileChooser = new JFileChooser(dir)
-      if (jFileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-        Some(jFileChooser.getSelectedFile())
-      } else {
-        println("No Parameters select...")
-        None
+
+  def askUserForRPSFile(dir: File): Option[File] = {
+    val jFileChooser = new JFileChooser(dir)
+    if (jFileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+      Some(jFileChooser.getSelectedFile())
+    } else {
+      println("No Parameters select...")
+      None
+    }
+  }
+
+  def resizeParameterSequence(params: IndexedSeq[Double], length: Int, fill: Double): IndexedSeq[Double] = {
+    val zeros = IndexedSeq.fill[Double](length)(fill)
+    (params ++ zeros).slice(0, length) //brute force
+  }
+
+  def updateModelParameters(params: RenderParameter) = {
+    val newShape = resizeParameterSequence(params.momo.shape, shapeRank, 0)
+    val newColor = resizeParameterSequence(params.momo.color, colorRank, 0)
+    val newExpr = resizeParameterSequence(params.momo.expression, expRank, 0)
+    println("Loaded Parameters")
+
+    init = init.copy(momo = init.momo.copy(shape = newShape, color = newColor, expression = newExpr))
+    setShapeSliders()
+    setColorSliders()
+    setExpSliders()
+    updateImage()
+  }
+
+  val loadButton= GUIBlock.button(
+    "load RPS",
+    {
+      for {rpsFile <- askUserForRPSFile(new File("."))
+           rpsParams <- RenderParameterIO.read(rpsFile)} {
+        updateModelParameters(rpsParams)
       }
     }
-
-    def retrieveParamsFromFile(rpsFile: Option[File]): Option[RenderParameter] ={
-      rpsFile match{
-        case Some(file) =>
-          val renderParams = RenderParameterIO.read(file)
-          renderParams match{
-            case Success(params) =>
-              Some(params)
-            case Failure(params) =>
-              None
-          }
-        case None =>
-          None
-      }
-    }
-
-    def createParamsSeq(params: IndexedSeq[Double], length: Int, fill: Double): IndexedSeq[Double] ={
-        val zeros = IndexedSeq.fill[Double](length)(fill)
-        (params ++ zeros).slice(0, length) //brute force
-    }
-
-    val rpsFile  = askUserForRPSFile(new File("."))
-    val rpsParams = retrieveParamsFromFile(rpsFile)
-
-    rpsParams match {
-      case Some(params) =>
-
-        val newShape = createParamsSeq(params.momo.shape, shapeRank, 0)
-        val newColor = createParamsSeq(params.momo.color, colorRank, 0)
-        val newExpr = createParamsSeq(params.momo.expression, expRank, 0)
-        println("Loaded Parameters")
-
-        init = init.copy(momo = init.momo.copy(shape = newShape, color = newColor, expression = newExpr))
-        setShapeSliders()
-        setColorSliders()
-        setExpSliders()
-        updateImage()
-
-      case None =>
-        None
-    }
-})
+  )
 
 
   //---- update the image
