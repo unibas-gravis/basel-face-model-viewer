@@ -81,7 +81,7 @@ case class SimpleModelViewer(
   modelFile: File,
   imageWidth: Int = 512,
   imageHeight: Int = 512,
-  maximalSliderValue: Int = 1,
+  maximalSliderValue: Int = 2,
   maximalShapeRank: Option[Int] = None,
   maximalColorRank: Option[Int] = None,
   maximalExpressionRank: Option[Int] = None
