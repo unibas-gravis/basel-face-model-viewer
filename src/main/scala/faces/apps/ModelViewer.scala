@@ -23,6 +23,7 @@ import breeze.linalg.min
 import scalismo.faces.gui.{GUIBlock, GUIFrame, ImagePanel}
 import scalismo.faces.gui.GUIBlock._
 import scalismo.faces.parameters.RenderParameter
+import scalismo.faces.io.RenderParameterIO
 import scalismo.faces.sampling.face.MoMoRenderer
 import scalismo.faces.color.{RGB, RGBA}
 import scalismo.faces.image.PixelImage
@@ -30,6 +31,7 @@ import scalismo.faces.io.MoMoIO
 import scalismo.utils.Random
 
 import scala.reflect.io.Path
+import scala.util.{ Success, Failure}
 
 object ModelViewer extends App {
 
@@ -292,6 +294,48 @@ case class SimpleModelViewer(
     resetShape(); resetColor(); resetExpression(); updateImage()
   })
 
+  //loads parameters from file
+  //TODO: load other parameters than the momo shape, expr and color
+
+  def askUserForRPSFile(dir: File): Option[File] = {
+    val jFileChooser = new JFileChooser(dir)
+    if (jFileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+      Some(jFileChooser.getSelectedFile())
+    } else {
+      println("No Parameters select...")
+      None
+    }
+  }
+
+  def resizeParameterSequence(params: IndexedSeq[Double], length: Int, fill: Double): IndexedSeq[Double] = {
+    val zeros = IndexedSeq.fill[Double](length)(fill)
+    (params ++ zeros).slice(0, length) //brute force
+  }
+
+  def updateModelParameters(params: RenderParameter) = {
+    val newShape = resizeParameterSequence(params.momo.shape, shapeRank, 0)
+    val newColor = resizeParameterSequence(params.momo.color, colorRank, 0)
+    val newExpr = resizeParameterSequence(params.momo.expression, expRank, 0)
+    println("Loaded Parameters")
+
+    init = init.copy(momo = init.momo.copy(shape = newShape, color = newColor, expression = newExpr))
+    setShapeSliders()
+    setColorSliders()
+    setExpSliders()
+    updateImage()
+  }
+
+  val loadButton= GUIBlock.button(
+    "load RPS",
+    {
+      for {rpsFile <- askUserForRPSFile(new File("."))
+           rpsParams <- RenderParameterIO.read(rpsFile)} {
+        updateModelParameters(rpsParams)
+      }
+    }
+  )
+
+
   //---- update the image
   def updateImage(): Unit = {
     if (!changingSliders)
@@ -311,7 +355,7 @@ case class SimpleModelViewer(
   controls.addTab("expression", GUIBlock.stack(expScrollPane, GUIBlock.shelf(rndExpButton, resetExpButton)))
 
   val guiFrame: GUIFrame = GUIBlock.stack(
-    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(randomButton, resetButton)))
+    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(randomButton, resetButton, loadButton)))
   ).displayInNewFrame("MoMo-Viewer")
 
 
