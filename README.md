@@ -1,6 +1,9 @@
  # Simple Morphable Model Viewer
  
  Simple tool to view the [Basel Face Model 2017](http://faces.cs.unibas.ch/bfm/bfm2017.html).
+ 
+ ![Simple Morphable Model Viewer](Screenshot.png)
+ 
  For further information about the model and the surrounding theory and software please visit [http://gravis.dmi.unibas.ch/PMM](http://gravis.dmi.unibas.ch/PMM)
 
 ## Requirements
