@@ -35,6 +35,17 @@ import scalismo.faces.io.MoMoIO
 import scalismo.utils.Random
 import spire.syntax.field
 
+import scalismo.faces.io.MeshIO
+import scalismo.faces.parameters.RenderObject
+import scalismo.faces.color.RGBA
+import scalismo.faces.io.msh.MSHMeshIO
+import scalismo.faces.io.ply.PLYMesh
+import scalismo.faces.momo.MoMo
+import scalismo.faces.momo.MoMoCoefficients
+import scalismo.faces.mesh.{ColorNormalMesh3D, OptionalColorNormalMesh3D, TextureMappedProperty, VertexColorMesh3D}
+import scalismo.geometry.{Vector, _3D}
+import scalismo.mesh.{MeshSurfaceProperty, SurfacePointProperty, TriangleMesh3D}
+
 import scala.reflect.io.Path
 import scala.util.{Failure, Success}
 
@@ -334,6 +345,29 @@ case class SimpleModelViewer(
   randomButton.setToolTipText("draw each model parameter at random from a standard normal distribution")
   resetButton.setToolTipText("set all model parameters to zero")
 
+  //function to export the current shown face as a .ply file
+  def exportShape () ={
+
+    val VCM3D = model.instance(init.momo.coefficients)
+
+    val fc = new JFileChooser()
+    fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY)
+    fc.setDialogTitle("Select a folder to store the .ply file and name it");
+    if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+      val file = fc.getSelectedFile()
+      // save to file
+      MeshIO.write(VCM3D, new File(file + ".ply"))
+    }
+
+  }
+
+  //exportShape button and its tooltip
+  val exportShapeButton = GUIBlock.button("export", {
+    exportShape();
+  })
+  exportShapeButton.setToolTipText("export the current shape and texture as .ply")
+
+
   //loads parameters from file
   //TODO: load other parameters than the momo shape, expr and color
 
@@ -403,7 +437,7 @@ case class SimpleModelViewer(
   controls.addTab("expression", GUIBlock.stack(expScrollPane, GUIBlock.shelf(rndExpButton, resetExpButton)))
 
   val guiFrame: GUIFrame = GUIBlock.stack(
-    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, loadButton)))
+    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, loadButton, exportShapeButton)))
   ).displayInNewFrame("MoMo-Viewer")
 
 
