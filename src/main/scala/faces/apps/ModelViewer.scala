@@ -13,30 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package faces.apps
+ package faces.apps
 
-import java.awt.Dimension
-import java.awt.event.{ActionEvent, ActionListener}
-import java.io.File
-import javax.swing._
-import javax.swing.event.{ChangeEvent, ChangeListener}
-import javax.swing.text.NumberFormatter
-import java.text.NumberFormat
+ import java.awt.Dimension
+ import java.io.File
+ import javax.swing._
+ import javax.swing.event.{ChangeEvent, ChangeListener}
 
-import breeze.linalg.min
-import scalismo.faces.gui.{GUIBlock, GUIFrame, ImagePanel}
-import scalismo.faces.gui.GUIBlock._
-import scalismo.faces.parameters.RenderParameter
-import scalismo.faces.io.RenderParameterIO
-import scalismo.faces.sampling.face.MoMoRenderer
-import scalismo.faces.color.{RGB, RGBA}
-import scalismo.faces.image.PixelImage
-import scalismo.faces.io.MoMoIO
-import scalismo.utils.Random
-import spire.syntax.field
+ import breeze.linalg.min
+ import scalismo.faces.gui.{GUIBlock, GUIFrame, ImagePanel}
+ import scalismo.faces.gui.GUIBlock._
+ import scalismo.faces.parameters.RenderParameter
+ import scalismo.faces.io.RenderParameterIO
+ import scalismo.faces.sampling.face.MoMoRenderer
+ import scalismo.faces.color.RGB
+ import scalismo.faces.image.PixelImage
+ import scalismo.faces.io.MoMoIO
+ import scalismo.utils.Random
 
-import scala.reflect.io.Path
-import scala.util.{Failure, Success}
+ import scalismo.faces.io.MeshIO
+ import scalismo.faces.color.RGBA
+
+ import scala.reflect.io.Path
 
 object ModelViewer extends App {
 
@@ -89,7 +87,7 @@ case class SimpleModelViewer(
 
   scalismo.initialize()
   val seed = 1024L
-  implicit val rnd = new Random(seed)
+  implicit val rnd = Random(seed)
 
 
   val model = MoMoIO.read(modelFile, "").get
@@ -334,6 +332,43 @@ case class SimpleModelViewer(
   randomButton.setToolTipText("draw each model parameter at random from a standard normal distribution")
   resetButton.setToolTipText("set all model parameters to zero")
 
+  //function to export the current shown face as a .ply file
+  def exportShape () ={
+
+    def askToOverwrite(file: File): Boolean = {
+      val dialogButton = JOptionPane.YES_NO_OPTION
+      JOptionPane.showConfirmDialog(null, s"Would you like to overwrite the existing file: ${file}?","Warning",dialogButton) == JOptionPane.YES_OPTION
+    }
+
+    val VCM3D = model.instance(init.momo.coefficients)
+
+    val fc = new JFileChooser()
+    fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES)
+    fc.setDialogTitle("Select a folder to store the .ply file and name it");
+    if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+      var file = fc.getSelectedFile()
+      if (file.isDirectory) {
+        file = new File(file,"instance.ply")
+      }
+      if ( !file.getName.endsWith(".ply")) {
+        file = new File( file+".ply")
+      }
+      if (!file.exists() || askToOverwrite(file)) {
+        // save to file
+        MeshIO.write(VCM3D, file)
+      }
+    }
+  }
+
+  //exportShape button and its tooltip
+  val exportShapeButton = GUIBlock.button("export PLY",
+    {
+      exportShape();
+    }
+  )
+  exportShapeButton.setToolTipText("export the current shape and texture as .ply")
+
+
   //loads parameters from file
   //TODO: load other parameters than the momo shape, expr and color
 
@@ -403,7 +438,7 @@ case class SimpleModelViewer(
   controls.addTab("expression", GUIBlock.stack(expScrollPane, GUIBlock.shelf(rndExpButton, resetExpButton)))
 
   val guiFrame: GUIFrame = GUIBlock.stack(
-    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, loadButton)))
+    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, loadButton, exportShapeButton)))
   ).displayInNewFrame("MoMo-Viewer")
 
 

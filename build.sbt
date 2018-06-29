@@ -9,7 +9,7 @@ resolvers += Resolver.jcenterRepo
 
 resolvers += Resolver.bintrayRepo("unibas-gravis", "maven")
 
-libraryDependencies += "ch.unibas.cs.gravis" %% "scalismo-faces" % "0.5.+"
+libraryDependencies += "ch.unibas.cs.gravis" %% "scalismo-faces" % "0.9.2+"
 
 mainClass in assembly := Some("faces.apps.ModelViewer")
 
