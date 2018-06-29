@@ -18,6 +18,7 @@
 - upper random and reset button will update color/shape/expression parameters for active tab
 - lower random and reset button will update all model parameters
 - the button `load RPS` will load rendering parameters from a .rps file (currently only shape, color and expression)
+- the butten `write PLY` enables writing the current instance as a mesh in the ply file format
 - sliders are ordered according to the principal components
 - the maximal parameter value corresponding to the sliders can be adjusted
 - press `Ctrl` to move pose with mouse (first click on face to activate the frame)
@@ -33,4 +34,4 @@
 
 ## Dependencies
 
-- [scalismo-faces](https://github.com/unibas-gravis/scalismo-faces) `0.5.+`
+- [scalismo-faces](https://github.com/unibas-gravis/scalismo-faces) `0.9.2+`
