@@ -24,14 +24,11 @@
  import scalismo.faces.gui.{GUIBlock, GUIFrame, ImagePanel}
  import scalismo.faces.gui.GUIBlock._
  import scalismo.faces.parameters.RenderParameter
- import scalismo.faces.io.RenderParameterIO
+ import scalismo.faces.io.{MeshIO, MoMoIO, PixelImageIO, RenderParameterIO}
  import scalismo.faces.sampling.face.MoMoRenderer
  import scalismo.faces.color.RGB
  import scalismo.faces.image.PixelImage
- import scalismo.faces.io.MoMoIO
  import scalismo.utils.Random
-
- import scalismo.faces.io.MeshIO
  import scalismo.faces.color.RGBA
 
  import scala.reflect.io.Path
@@ -107,7 +104,7 @@ case class SimpleModelViewer(
     case _ => try{model.expressionModel.get.expression.rank} catch {case e: Exception => 0}
   }
 
-  val renderer = MoMoRenderer(model, RGBA.BlackTransparent).cached(5)
+  var renderer = MoMoRenderer(model, RGBA.BlackTransparent).cached(5)
 
   val initDefault: RenderParameter = RenderParameter.defaultSquare.fitToImageSize(imageWidth, imageHeight)
   val init10 = initDefault.copy(
@@ -329,8 +326,13 @@ case class SimpleModelViewer(
     resetShape(); resetColor(); resetExpression(); updateImage()
   })
 
+  val removeExpressionButton = GUIBlock.button("neutralModel", {
+    renderer = MoMoRenderer( model.neutralModel, RGBA.BlackTransparent).cached(5); resetExpression(); updateImage()
+  })
+
   randomButton.setToolTipText("draw each model parameter at random from a standard normal distribution")
   resetButton.setToolTipText("set all model parameters to zero")
+  removeExpressionButton.setToolTipText("remove expression part of model")
 
   //function to export the current shown face as a .ply file
   def exportShape () ={
@@ -360,6 +362,34 @@ case class SimpleModelViewer(
     }
   }
 
+  //function to export the current shown face as a .ply file
+  def exportImage () ={
+
+    def askToOverwrite(file: File): Boolean = {
+      val dialogButton = JOptionPane.YES_NO_OPTION
+      JOptionPane.showConfirmDialog(null, s"Would you like to overwrite the existing file: ${file}?","Warning",dialogButton) == JOptionPane.YES_OPTION
+    }
+
+    val img = renderer.renderImage(init)
+
+    val fc = new JFileChooser()
+    fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES)
+    fc.setDialogTitle("Select a folder to store the .png file and name it");
+    if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+      var file = fc.getSelectedFile()
+      if (file.isDirectory) {
+        file = new File(file,"instance.png")
+      }
+      if ( !file.getName.endsWith(".png")) {
+        file = new File( file+".png")
+      }
+      if (!file.exists() || askToOverwrite(file)) {
+        // save to file
+        PixelImageIO.write(img, file)
+      }
+    }
+  }
+
   //exportShape button and its tooltip
   val exportShapeButton = GUIBlock.button("export PLY",
     {
@@ -367,6 +397,14 @@ case class SimpleModelViewer(
     }
   )
   exportShapeButton.setToolTipText("export the current shape and texture as .ply")
+
+  //exportImage button and its tooltip
+  val exportImageButton = GUIBlock.button("export PNG",
+    {
+      exportImage();
+    }
+  )
+  exportImageButton.setToolTipText("export the current image as .png")
 
 
   //loads parameters from file
@@ -438,7 +476,7 @@ case class SimpleModelViewer(
   controls.addTab("expression", GUIBlock.stack(expScrollPane, GUIBlock.shelf(rndExpButton, resetExpButton)))
 
   val guiFrame: GUIFrame = GUIBlock.stack(
-    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, loadButton, exportShapeButton)))
+    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, removeExpressionButton, loadButton, exportShapeButton, exportImageButton)))
   ).displayInNewFrame("MoMo-Viewer")
 
 
