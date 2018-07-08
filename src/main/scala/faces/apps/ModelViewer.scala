@@ -78,6 +78,7 @@ case class SimpleModelViewer(
 
 
   val model: MoMo = MoMoIO.read(modelFile, "").get
+  var showExpressionModel: Boolean = model.hasExpressions
 
   val shapeRank: Int = maximalShapeRank match {
     case Some(rank) => min(model.neutralModel.shape.rank, rank)
@@ -316,13 +317,26 @@ case class SimpleModelViewer(
     resetShape(); resetColor(); resetExpression(); updateImage()
   })
 
-  val removeExpressionButton: JButton = GUIBlock.button("neutralModel", {
-    renderer = MoMoRenderer( model.neutralModel, RGBA.BlackTransparent).cached(5); resetExpression(); updateImage()
+  val toggleExpressionButton: JButton = GUIBlock.button("expressions off", {
+    if ( model.hasExpressions ) {
+      if ( showExpressionModel ) renderer = MoMoRenderer(model.neutralModel, RGBA.BlackTransparent).cached(5)
+      else renderer = MoMoRenderer(model, RGBA.BlackTransparent).cached(5)
+
+      showExpressionModel = !showExpressionModel
+      updateToggleExpressioButton()
+      addRemoveExpressionTab()
+      updateImage()
+    }
   })
+
+  def updateToggleExpressioButton(): Unit = {
+    if ( showExpressionModel ) toggleExpressionButton.setText("expressions off")
+    else toggleExpressionButton.setText("expressions on")
+  }
 
   randomButton.setToolTipText("draw each model parameter at random from a standard normal distribution")
   resetButton.setToolTipText("set all model parameters to zero")
-  removeExpressionButton.setToolTipText("remove expression part of model")
+  toggleExpressionButton.setToolTipText("toggle expression part of model on and off")
 
   //function to export the current shown face as a .ply file
   def exportShape (): Try[Unit] ={
@@ -332,7 +346,8 @@ case class SimpleModelViewer(
       JOptionPane.showConfirmDialog(null, s"Would you like to overwrite the existing file: $file?","Warning",dialogButton) == JOptionPane.YES_OPTION
     }
 
-    val VCM3D = model.instance(init.momo.coefficients)
+    val VCM3D = if (model.hasExpressions && !showExpressionModel) model.neutralModel.instance(init.momo.coefficients)
+    else model.instance(init.momo.coefficients)
 
     val fc = new JFileChooser()
     fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES)
@@ -461,10 +476,27 @@ case class SimpleModelViewer(
   val controls = new JTabbedPane()
   controls.addTab("color", GUIBlock.stack(colorScrollPane, GUIBlock.shelf(rndColorButton, resetColorButton)))
   controls.addTab("shape", GUIBlock.stack(shapeScrollPane, GUIBlock.shelf(rndShapeButton, resetShapeButton)))
-  controls.addTab("expression", GUIBlock.stack(expScrollPane, GUIBlock.shelf(rndExpButton, resetExpButton)))
+  if ( model.hasExpressions)
+    controls.addTab("expression", GUIBlock.stack(expScrollPane, GUIBlock.shelf(rndExpButton, resetExpButton)))
+  def addRemoveExpressionTab(): Unit = {
+    if ( showExpressionModel ) {
+      controls.addTab("expression", GUIBlock.stack(expScrollPane, GUIBlock.shelf(rndExpButton, resetExpButton)))
+    } else {
+      val idx = controls.indexOfTab("expression")
+      if ( idx >= 0) controls.remove(idx)
+    }
+  }
 
   val guiFrame: GUIFrame = GUIBlock.stack(
-    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, removeExpressionButton, loadButton, exportShapeButton, exportImageButton)))
+    GUIBlock.shelf(imageWindow,
+      GUIBlock.stack(controls,
+        if (model.hasExpressions) {
+          GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, toggleExpressionButton, loadButton, exportShapeButton, exportImageButton)
+        } else {
+          GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, loadButton, exportShapeButton, exportImageButton)
+        }
+      )
+    )
   ).displayIn("MoMo-Viewer")
 
 
