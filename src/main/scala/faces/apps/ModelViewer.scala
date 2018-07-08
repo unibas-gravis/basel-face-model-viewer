@@ -35,33 +35,21 @@
 
 object ModelViewer extends App {
 
-  // check if args(0):
-  // - is file, try to load it
-  // - is directory, open file chooser there
-  // - open file chooser at default location
-
   final val DEFAULT_DIR = new File(".")
 
-  val modelFile: Option[File] = if (args.size>0) {
-    val arg = args(0)
-    val path = Path(arg)
-    if ( path.isFile ) Some(path.jfile)
-    else {
-      val dir = if ( path.isDirectory ) {
-        path.jfile
-      } else {
-        DEFAULT_DIR
-      }
-      askUserForModelFile(dir)
+  val modelFile: Option[File] = getModelFile(args)
+  modelFile.map(SimpleModelViewer(_))
+
+  private def getModelFile(args: Seq[String]): Option[File] = {
+    if (args.size > 0) {
+      val path = Path(args.head)
+      if (path.isFile) return Some(path.jfile)
+      if (path.isDirectory) return askUserForModelFile(path.jfile)
     }
-  } else {
     askUserForModelFile(DEFAULT_DIR)
   }
 
-  modelFile.map(SimpleModelViewer(_))
-
-
-  def askUserForModelFile(dir: File): Option[File] = {
+  private def askUserForModelFile(dir: File): Option[File] = {
     val jFileChooser = new JFileChooser(dir)
     if (jFileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
       Some(jFileChooser.getSelectedFile())
