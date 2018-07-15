@@ -16,58 +16,45 @@
  package faces.apps
 
  import java.awt.Dimension
- import java.io.File
+ import java.io.{File, IOException}
+
  import javax.swing._
  import javax.swing.event.{ChangeEvent, ChangeListener}
-
  import breeze.linalg.min
  import scalismo.faces.gui.{GUIBlock, GUIFrame, ImagePanel}
  import scalismo.faces.gui.GUIBlock._
  import scalismo.faces.parameters.RenderParameter
- import scalismo.faces.io.RenderParameterIO
+ import scalismo.faces.io.{MeshIO, MoMoIO, PixelImageIO, RenderParameterIO}
  import scalismo.faces.sampling.face.MoMoRenderer
  import scalismo.faces.color.RGB
  import scalismo.faces.image.PixelImage
- import scalismo.faces.io.MoMoIO
  import scalismo.utils.Random
-
- import scalismo.faces.io.MeshIO
  import scalismo.faces.color.RGBA
+ import scalismo.faces.momo.MoMo
 
  import scala.reflect.io.Path
+ import scala.util.{Failure, Try}
 
 object ModelViewer extends App {
 
-  // check if args(0):
-  // - is file, try to load it
-  // - is directory, open file chooser there
-  // - open file chooser at default location
-
   final val DEFAULT_DIR = new File(".")
 
-  val modelFile: Option[File] = if (args.size>0) {
-    val arg = args(0)
-    val path = Path(arg)
-    if ( path.isFile ) Some(path.jfile)
-    else {
-      val dir = if ( path.isDirectory ) {
-        path.jfile
-      } else {
-        DEFAULT_DIR
-      }
-      askUserForModelFile(dir)
+  val modelFile: Option[File] = getModelFile(args)
+  modelFile.map(SimpleModelViewer(_))
+
+  private def getModelFile(args: Seq[String]): Option[File] = {
+    if (args.nonEmpty) {
+      val path = Path(args.head)
+      if (path.isFile) return Some(path.jfile)
+      if (path.isDirectory) return askUserForModelFile(path.jfile)
     }
-  } else {
     askUserForModelFile(DEFAULT_DIR)
   }
 
-  modelFile.map(SimpleModelViewer(_))
-
-
-  def askUserForModelFile(dir: File): Option[File] = {
+  private def askUserForModelFile(dir: File): Option[File] = {
     val jFileChooser = new JFileChooser(dir)
     if (jFileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-      Some(jFileChooser.getSelectedFile())
+      Some(jFileChooser.getSelectedFile)
     } else {
       println("No model select...")
       None
@@ -87,47 +74,48 @@ case class SimpleModelViewer(
 
   scalismo.initialize()
   val seed = 1024L
-  implicit val rnd = Random(seed)
+  implicit val rnd: Random = Random(seed)
 
 
-  val model = MoMoIO.read(modelFile, "").get
+  val model: MoMo = MoMoIO.read(modelFile, "").get
+  var showExpressionModel: Boolean = model.hasExpressions
 
-  val shapeRank = maximalShapeRank match {
+  val shapeRank: Int = maximalShapeRank match {
     case Some(rank) => min(model.neutralModel.shape.rank, rank)
     case _ => model.neutralModel.shape.rank
   }
 
-  val colorRank = maximalColorRank match {
+  val colorRank: Int = maximalColorRank match {
     case Some(rank) => min(model.neutralModel.color.rank, rank)
     case _ => model.neutralModel.color.rank
   }
 
-  val expRank = maximalExpressionRank match {
-    case Some(rank) => try{min(model.expressionModel.get.expression.rank, rank)} catch {case e: Exception => 0}
-    case _ => try{model.expressionModel.get.expression.rank} catch {case e: Exception => 0}
+  val expRank: Int = maximalExpressionRank match {
+    case Some(rank) => try{min(model.expressionModel.get.expression.rank, rank)} catch {case _: Exception => 0}
+    case _ => try{model.expressionModel.get.expression.rank} catch {case _: Exception => 0}
   }
 
-  val renderer = MoMoRenderer(model, RGBA.BlackTransparent).cached(5)
+  var renderer: MoMoRenderer = MoMoRenderer(model, RGBA.BlackTransparent).cached(5)
 
   val initDefault: RenderParameter = RenderParameter.defaultSquare.fitToImageSize(imageWidth, imageHeight)
-  val init10 = initDefault.copy(
+  val init10: RenderParameter = initDefault.copy(
     momo = initDefault.momo.withNumberOfCoefficients(shapeRank, colorRank, expRank)
   )
-  var init = init10
+  var init: RenderParameter = init10
 
   var changingSliders = false
 
   val sliderSteps = 1000
   var maximalSigma: Int = maximalSliderValue
-  var maximalSigmaSpinner = {
+  var maximalSigmaSpinner: JSpinner = {
     val spinner = new JSpinner(new SpinnerNumberModel(maximalSigma,0,999,1))
     spinner.addChangeListener( new ChangeListener() {
-      override def stateChanged(e: ChangeEvent) = {
-        val newMaxSigma = spinner.getModel().asInstanceOf[SpinnerNumberModel].getNumber.intValue()
+      override def stateChanged(e: ChangeEvent): Unit = {
+        val newMaxSigma = spinner.getModel.asInstanceOf[SpinnerNumberModel].getNumber.intValue()
         maximalSigma = math.abs(newMaxSigma)
-        setShapeSliders
-        setColorSliders
-        setExpSliders
+        setShapeSliders()
+        setColorSliders()
+        setExpSliders()
       }
     })
     spinner.setToolTipText("maximal slider value")
@@ -155,16 +143,16 @@ case class SimpleModelViewer(
     })
   }
 
-  val shapeSliderView = GUIBlock.shelf(shapeSlider.zipWithIndex.map(s => GUIBlock.stack(s._1, new JLabel("" + s._2))): _*)
+  val shapeSliderView: JPanel = GUIBlock.shelf(shapeSlider.zipWithIndex.map(s => GUIBlock.stack(s._1, new JLabel("" + s._2))): _*)
   val shapeScrollPane = new JScrollPane(shapeSliderView)
-  val shapeScrollBar = shapeScrollPane.createVerticalScrollBar()
+  val shapeScrollBar: JScrollBar = shapeScrollPane.createVerticalScrollBar()
   shapeScrollPane.setSize(800, 300)
   shapeScrollPane.setPreferredSize(new Dimension(800, 300))
 
-  val rndShapeButton = GUIBlock.button("random", {
+  val rndShapeButton: JButton = GUIBlock.button("random", {
     randomShape(); updateImage()
   })
-  val resetShapeButton = GUIBlock.button("reset", {
+  val resetShapeButton: JButton = GUIBlock.button("reset", {
     resetShape(); updateImage()
   })
   rndShapeButton.setToolTipText("draw each shape parameter at random from a standard normal distribution")
@@ -177,11 +165,11 @@ case class SimpleModelViewer(
     }))
   }
 
-  def randomShape() = {
+  def randomShape(): Unit = {
     init = init.copy(momo = init.momo.copy(shape = {
       val current = init.momo.shape
       current.zipWithIndex.map {
-        case (v, i) =>
+        case (_, _) =>
           rnd.scalaRandom.nextGaussian
       }
 
@@ -189,14 +177,14 @@ case class SimpleModelViewer(
     setShapeSliders()
   }
 
-  def resetShape() = {
+  def resetShape(): Unit = {
     init = init.copy(momo = init.momo.copy(
       shape = IndexedSeq.fill(shapeRank)(0.0)
     ))
     setShapeSliders()
   }
 
-  def setShapeSliders() = {
+  def setShapeSliders(): Unit = {
     changingSliders = true
     (0 until shapeRank).foreach(i => {
       shapeSlider(i).setValue(paramToSlider(init.momo.shape(i)))
@@ -212,17 +200,17 @@ case class SimpleModelViewer(
     })
   }
 
-  val colorSliderView = GUIBlock.shelf(colorSlider.zipWithIndex.map(s => GUIBlock.stack(s._1, new JLabel("" + s._2))): _*)
+  val colorSliderView: JPanel = GUIBlock.shelf(colorSlider.zipWithIndex.map(s => GUIBlock.stack(s._1, new JLabel("" + s._2))): _*)
   val colorScrollPane = new JScrollPane(colorSliderView)
-  val colorScrollBar = colorScrollPane.createHorizontalScrollBar()
+  val colorScrollBar: JScrollBar = colorScrollPane.createHorizontalScrollBar()
   colorScrollPane.setSize(800, 300)
   colorScrollPane.setPreferredSize(new Dimension(800, 300))
 
-  val rndColorButton = GUIBlock.button("random", {
+  val rndColorButton: JButton = GUIBlock.button("random", {
     randomColor(); updateImage()
   })
 
-  val resetColorButton = GUIBlock.button("reset", {
+  val resetColorButton: JButton = GUIBlock.button("reset", {
     resetColor(); updateImage()
   })
   rndColorButton.setToolTipText("draw each color parameter at random from a standard normal distribution")
@@ -235,11 +223,11 @@ case class SimpleModelViewer(
     }))
   }
 
-  def randomColor() = {
+  def randomColor(): Unit = {
     init = init.copy(momo = init.momo.copy(color = {
       val current = init.momo.color
       current.zipWithIndex.map {
-        case (v, i) =>
+        case (_, _) =>
           rnd.scalaRandom.nextGaussian
       }
 
@@ -247,14 +235,14 @@ case class SimpleModelViewer(
     setColorSliders()
   }
 
-  def resetColor() = {
+  def resetColor(): Unit = {
     init = init.copy(momo = init.momo.copy(
       color = IndexedSeq.fill(colorRank)(0.0)
     ))
     setColorSliders()
   }
 
-  def setColorSliders() = {
+  def setColorSliders(): Unit = {
     changingSliders = true
     (0 until colorRank).foreach(i => {
       colorSlider(i).setValue(paramToSlider(init.momo.color(i)))
@@ -270,16 +258,16 @@ case class SimpleModelViewer(
     })
   }
 
-  val expSliderView = GUIBlock.shelf(expSlider.zipWithIndex.map(s => GUIBlock.stack(s._1, new JLabel("" + s._2))): _*)
+  val expSliderView: JPanel = GUIBlock.shelf(expSlider.zipWithIndex.map(s => GUIBlock.stack(s._1, new JLabel("" + s._2))): _*)
   val expScrollPane = new JScrollPane(expSliderView)
-  val expScrollBar = expScrollPane.createVerticalScrollBar()
+  val expScrollBar: JScrollBar = expScrollPane.createVerticalScrollBar()
   expScrollPane.setSize(800, 300)
   expScrollPane.setPreferredSize(new Dimension(800, 300))
 
-  val rndExpButton = GUIBlock.button("random", {
+  val rndExpButton: JButton = GUIBlock.button("random", {
     randomExpression(); updateImage()
   })
-  val resetExpButton = GUIBlock.button("reset", {
+  val resetExpButton: JButton = GUIBlock.button("reset", {
     resetExpression(); updateImage()
   })
 
@@ -293,11 +281,11 @@ case class SimpleModelViewer(
     }))
   }
 
-  def randomExpression() = {
+  def randomExpression(): Unit = {
     init = init.copy(momo = init.momo.copy(expression = {
       val current = init.momo.expression
       current.zipWithIndex.map {
-        case (v, i) =>
+        case (_, _) =>
           rnd.scalaRandom.nextGaussian
       }
 
@@ -305,14 +293,14 @@ case class SimpleModelViewer(
     setExpSliders()
   }
 
-  def resetExpression() = {
+  def resetExpression(): Unit = {
     init = init.copy(momo = init.momo.copy(
       expression = IndexedSeq.fill(expRank)(0.0)
     ))
     setExpSliders()
   }
 
-  def setExpSliders() = {
+  def setExpSliders(): Unit = {
     changingSliders = true
     (0 until expRank).foreach(i => {
       expSlider(i).setValue(paramToSlider(init.momo.expression(i)))
@@ -322,51 +310,104 @@ case class SimpleModelViewer(
 
 
   //--- ALL TOGETHER -----
-  val randomButton = GUIBlock.button("random", {
+  val randomButton: JButton = GUIBlock.button("random", {
     randomShape(); randomColor(); randomExpression(); updateImage()
   })
-  val resetButton = GUIBlock.button("reset", {
+  val resetButton: JButton = GUIBlock.button("reset", {
     resetShape(); resetColor(); resetExpression(); updateImage()
   })
 
+  val toggleExpressionButton: JButton = GUIBlock.button("expressions off", {
+    if ( model.hasExpressions ) {
+      if ( showExpressionModel ) renderer = MoMoRenderer(model.neutralModel, RGBA.BlackTransparent).cached(5)
+      else renderer = MoMoRenderer(model, RGBA.BlackTransparent).cached(5)
+
+      showExpressionModel = !showExpressionModel
+      updateToggleExpressioButton()
+      addRemoveExpressionTab()
+      updateImage()
+    }
+  })
+
+  def updateToggleExpressioButton(): Unit = {
+    if ( showExpressionModel ) toggleExpressionButton.setText("expressions off")
+    else toggleExpressionButton.setText("expressions on")
+  }
+
   randomButton.setToolTipText("draw each model parameter at random from a standard normal distribution")
   resetButton.setToolTipText("set all model parameters to zero")
+  toggleExpressionButton.setToolTipText("toggle expression part of model on and off")
 
   //function to export the current shown face as a .ply file
-  def exportShape () ={
+  def exportShape (): Try[Unit] ={
 
     def askToOverwrite(file: File): Boolean = {
       val dialogButton = JOptionPane.YES_NO_OPTION
-      JOptionPane.showConfirmDialog(null, s"Would you like to overwrite the existing file: ${file}?","Warning",dialogButton) == JOptionPane.YES_OPTION
+      JOptionPane.showConfirmDialog(null, s"Would you like to overwrite the existing file: $file?","Warning",dialogButton) == JOptionPane.YES_OPTION
     }
 
-    val VCM3D = model.instance(init.momo.coefficients)
+    val VCM3D = if (model.hasExpressions && !showExpressionModel) model.neutralModel.instance(init.momo.coefficients)
+    else model.instance(init.momo.coefficients)
 
     val fc = new JFileChooser()
     fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES)
-    fc.setDialogTitle("Select a folder to store the .ply file and name it");
+    fc.setDialogTitle("Select a folder to store the .ply file and name it")
     if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
-      var file = fc.getSelectedFile()
-      if (file.isDirectory) {
-        file = new File(file,"instance.ply")
-      }
-      if ( !file.getName.endsWith(".ply")) {
-        file = new File( file+".ply")
-      }
+      var file = fc.getSelectedFile
+      if (file.isDirectory) file = new File(file,"instance.ply")
+      if ( !file.getName.endsWith(".ply")) file = new File( file+".ply")
       if (!file.exists() || askToOverwrite(file)) {
-        // save to file
         MeshIO.write(VCM3D, file)
+      } else {
+        Failure(new IOException(s"Something went wrong when writing to file the file $file."))
       }
+    } else {
+      Failure(new Exception("User aborted save dialog."))
+    }
+  }
+
+  //function to export the current shown face as a .ply file
+  def exportImage (): Try[Unit] ={
+
+    def askToOverwrite(file: File): Boolean = {
+      val dialogButton = JOptionPane.YES_NO_OPTION
+      JOptionPane.showConfirmDialog(null, s"Would you like to overwrite the existing file: $file?","Warning",dialogButton) == JOptionPane.YES_OPTION
+    }
+
+    val img = renderer.renderImage(init)
+
+    val fc = new JFileChooser()
+    fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES)
+    fc.setDialogTitle("Select a folder to store the .png file and name it")
+    if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+      var file = fc.getSelectedFile
+      if (file.isDirectory) file = new File(file,"instance.png")
+      if ( !file.getName.endsWith(".png")) file = new File( file+".png")
+      if (!file.exists() || askToOverwrite(file)) {
+        PixelImageIO.write(img, file)
+      } else {
+        Failure(new IOException(s"Something went wrong when writing to file the file $file."))
+      }
+    } else {
+      Failure(new Exception("User aborted save dialog."))
     }
   }
 
   //exportShape button and its tooltip
-  val exportShapeButton = GUIBlock.button("export PLY",
+  val exportShapeButton: JButton = GUIBlock.button("export PLY",
     {
-      exportShape();
+      exportShape()
     }
   )
   exportShapeButton.setToolTipText("export the current shape and texture as .ply")
+
+  //exportImage button and its tooltip
+  val exportImageButton: JButton = GUIBlock.button("export PNG",
+    {
+      exportImage()
+    }
+  )
+  exportImageButton.setToolTipText("export the current image as .png")
 
 
   //loads parameters from file
@@ -375,7 +416,7 @@ case class SimpleModelViewer(
   def askUserForRPSFile(dir: File): Option[File] = {
     val jFileChooser = new JFileChooser(dir)
     if (jFileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-      Some(jFileChooser.getSelectedFile())
+      Some(jFileChooser.getSelectedFile)
     } else {
       println("No Parameters select...")
       None
@@ -387,7 +428,7 @@ case class SimpleModelViewer(
     (params ++ zeros).slice(0, length) //brute force
   }
 
-  def updateModelParameters(params: RenderParameter) = {
+  def updateModelParameters(params: RenderParameter): Unit = {
     val newShape = resizeParameterSequence(params.momo.shape, shapeRank, 0)
     val newColor = resizeParameterSequence(params.momo.color, colorRank, 0)
     val newExpr = resizeParameterSequence(params.momo.expression, expRank, 0)
@@ -400,12 +441,12 @@ case class SimpleModelViewer(
     updateImage()
   }
 
-  val loadButton= GUIBlock.button(
+  val loadButton: JButton = GUIBlock.button(
     "load RPS",
     {
       for {rpsFile <- askUserForRPSFile(new File("."))
            rpsParams <- RenderParameterIO.read(rpsFile)} {
-        val maxSigma = (rpsParams.momo.shape ++ rpsParams.momo.color ++ rpsParams.momo.expression).map(math.abs(_)).max
+        val maxSigma = (rpsParams.momo.shape ++ rpsParams.momo.color ++ rpsParams.momo.expression).map(math.abs).max
         if ( maxSigma > maximalSigma ) {
           maximalSigma = math.ceil(maxSigma).toInt
           maximalSigmaSpinner.setValue(maximalSigma)
@@ -435,11 +476,28 @@ case class SimpleModelViewer(
   val controls = new JTabbedPane()
   controls.addTab("color", GUIBlock.stack(colorScrollPane, GUIBlock.shelf(rndColorButton, resetColorButton)))
   controls.addTab("shape", GUIBlock.stack(shapeScrollPane, GUIBlock.shelf(rndShapeButton, resetShapeButton)))
-  controls.addTab("expression", GUIBlock.stack(expScrollPane, GUIBlock.shelf(rndExpButton, resetExpButton)))
+  if ( model.hasExpressions)
+    controls.addTab("expression", GUIBlock.stack(expScrollPane, GUIBlock.shelf(rndExpButton, resetExpButton)))
+  def addRemoveExpressionTab(): Unit = {
+    if ( showExpressionModel ) {
+      controls.addTab("expression", GUIBlock.stack(expScrollPane, GUIBlock.shelf(rndExpButton, resetExpButton)))
+    } else {
+      val idx = controls.indexOfTab("expression")
+      if ( idx >= 0) controls.remove(idx)
+    }
+  }
 
   val guiFrame: GUIFrame = GUIBlock.stack(
-    GUIBlock.shelf(imageWindow, GUIBlock.stack(controls, GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, loadButton, exportShapeButton)))
-  ).displayInNewFrame("MoMo-Viewer")
+    GUIBlock.shelf(imageWindow,
+      GUIBlock.stack(controls,
+        if (model.hasExpressions) {
+          GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, toggleExpressionButton, loadButton, exportShapeButton, exportImageButton)
+        } else {
+          GUIBlock.shelf(maximalSigmaSpinner, randomButton, resetButton, loadButton, exportShapeButton, exportImageButton)
+        }
+      )
+    )
+  ).displayIn("MoMo-Viewer")
 
 
 
@@ -482,8 +540,8 @@ case class SimpleModelViewer(
       if (lookAt) {
         val x = e.getX
         val y = e.getY
-        val yawPose = math.Pi / 2 * (x - imageWidth * 0.5).toDouble / (imageWidth / 2)
-        val pitchPose = math.Pi / 2 * (y - imageHeight * 0.5).toDouble / (imageHeight / 2)
+        val yawPose = math.Pi / 2 * (x - imageWidth * 0.5) / (imageWidth / 2)
+        val pitchPose = math.Pi / 2 * (y - imageHeight * 0.5) / (imageHeight / 2)
 
         init = init.copy(pose = init.pose.copy(yaw = yawPose, pitch = pitchPose))
         updateImage()

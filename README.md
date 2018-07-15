@@ -17,8 +17,10 @@
 ## Usage:
 - upper random and reset button will update color/shape/expression parameters for active tab
 - lower random and reset button will update all model parameters
+- the button neutralModel will remove the expression part of the model
 - the button `load RPS` will load rendering parameters from a .rps file (currently only shape, color and expression)
-- the butten `write PLY` enables writing the current instance as a mesh in the ply file format (thanks to ImageSynthTue)
+- the button `write PLY` enables writing the current instance as a mesh in the ply file format (thanks to ImageSynthTue)
+- the button `write PNG` enables writing the current instance as an image in the png file format
 - sliders are ordered according to the principal components
 - the maximal parameter value corresponding to the sliders can be adjusted
 - press `Ctrl` to move pose with mouse (first click on face to activate the frame)
