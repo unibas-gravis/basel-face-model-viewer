@@ -31,7 +31,7 @@
 
 ## Maintainer
 
-- Bernhard Egger <bernhard.egger@unibas.ch>
+- Bernhard Egger <egger.bernhard@gmail.com>
 - Andreas Morel-Forster <andreas.forster@unibas.ch>
 
 ## Dependencies
