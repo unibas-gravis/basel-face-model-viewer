@@ -12,7 +12,7 @@
 
 ## Run (precompiled):
 - download `model-viewer.jar` under `release`
-- run `java -jar model-viewer.jar -Xmx2g`
+- run `java -Xmx2g -jar model-viewer.jar`
 
 ## Usage:
 - upper random and reset button will update color/shape/expression parameters for active tab
