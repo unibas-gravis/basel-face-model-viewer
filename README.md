@@ -11,7 +11,7 @@
 - installed [sbt](http://www.scala-sbt.org/release/tutorial/Setup.html) (only for compiling from sources)
 
 ## Run (precompiled):
-- download `model-viewer.jar` under `release`
+- download `model-viewer.jar` under [release](https://github.com/unibas-gravis/basel-face-model-viewer/releases)
 - run `java -Xmx2g -jar model-viewer.jar`
 
 ## Usage:
