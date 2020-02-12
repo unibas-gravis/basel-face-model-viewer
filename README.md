@@ -1,6 +1,6 @@
  # Simple Morphable Model Viewer
  
- Simple tool to view the [Basel Face Model 2017](http://faces.cs.unibas.ch/bfm/bfm2017.html).
+ Simple tool to view the [Basel Face Model 2019](https://faces.dmi.unibas.ch/bfm/bfm2019.html) (compatible with the Basel Face Model 2017 and 2009).
  
  ![Simple Morphable Model Viewer](Screenshot.png)
  
