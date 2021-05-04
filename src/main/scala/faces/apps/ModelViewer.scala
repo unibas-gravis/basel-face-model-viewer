@@ -21,19 +21,19 @@
  import javax.swing._
  import javax.swing.event.{ChangeEvent, ChangeListener}
  import breeze.linalg.min
+ import scalismo.color.{RGB, RGBA}
  import scalismo.faces.gui.{GUIBlock, GUIFrame, ImagePanel}
  import scalismo.faces.gui.GUIBlock._
  import scalismo.faces.parameters.RenderParameter
  import scalismo.faces.io.{MeshIO, MoMoIO, PixelImageIO, RenderParameterIO}
  import scalismo.faces.sampling.face.MoMoRenderer
- import scalismo.faces.color.RGB
  import scalismo.faces.image.PixelImage
  import scalismo.utils.Random
- import scalismo.faces.color.RGBA
  import scalismo.faces.momo.MoMo
 
  import scala.reflect.io.Path
  import scala.util.{Failure, Try}
+ import collection.{ Seq => CSeq }
 
 object ModelViewer extends App {
 
@@ -42,7 +42,7 @@ object ModelViewer extends App {
   val modelFile: Option[File] = getModelFile(args)
   modelFile.map(SimpleModelViewer(_))
 
-  private def getModelFile(args: Seq[String]): Option[File] = {
+  private def getModelFile(args: CSeq[String]): Option[File] = {
     if (args.nonEmpty) {
       val path = Path(args.head)
       if (path.isFile) return Some(path.jfile)
@@ -355,7 +355,7 @@ case class SimpleModelViewer(
     if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
       var file = fc.getSelectedFile
       if (file.isDirectory) file = new File(file,"instance.ply")
-      if ( !file.getName.endsWith(".ply")) file = new File( file+".ply")
+      if ( !file.getName.endsWith(".ply")) file = new File( file.getAbsolutePath()+".ply")
       if (!file.exists() || askToOverwrite(file)) {
         MeshIO.write(VCM3D, file)
       } else {
@@ -382,7 +382,7 @@ case class SimpleModelViewer(
     if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
       var file = fc.getSelectedFile
       if (file.isDirectory) file = new File(file,"instance.png")
-      if ( !file.getName.endsWith(".png")) file = new File( file+".png")
+      if ( !file.getName.endsWith(".png")) file = new File( file.getAbsolutePath()+".png")
       if (!file.exists() || askToOverwrite(file)) {
         PixelImageIO.write(img, file)
       } else {
@@ -446,6 +446,7 @@ case class SimpleModelViewer(
     {
       for {rpsFile <- askUserForRPSFile(new File("."))
            rpsParams <- RenderParameterIO.read(rpsFile)} {
+        implicit val order = Ordering.Double.TotalOrdering
         val maxSigma = (rpsParams.momo.shape ++ rpsParams.momo.color ++ rpsParams.momo.expression).map(math.abs).max
         if ( maxSigma > maximalSigma ) {
           maximalSigma = math.ceil(maxSigma).toInt
