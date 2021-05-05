@@ -17,7 +17,6 @@
 
  import java.awt.Dimension
  import java.io.{File, IOException}
-
  import javax.swing._
  import javax.swing.event.{ChangeEvent, ChangeListener}
  import breeze.linalg.min
@@ -31,18 +30,18 @@
  import scalismo.utils.Random
  import scalismo.faces.momo.MoMo
 
+ import scala.math.Ordering.Double
  import scala.reflect.io.Path
  import scala.util.{Failure, Try}
- import collection.{ Seq => CSeq }
 
 object ModelViewer extends App {
 
   final val DEFAULT_DIR = new File(".")
 
-  val modelFile: Option[File] = getModelFile(args)
+  val modelFile: Option[File] = getModelFile(args.toIndexedSeq)
   modelFile.map(SimpleModelViewer(_))
 
-  private def getModelFile(args: CSeq[String]): Option[File] = {
+  private def getModelFile(args: Seq[String]): Option[File] = {
     if (args.nonEmpty) {
       val path = Path(args.head)
       if (path.isFile) return Some(path.jfile)
@@ -131,9 +130,9 @@ case class SimpleModelViewer(
     (value / maximalSigma * sliderSteps).toInt
   }
 
-  val bg = PixelImage(imageWidth, imageHeight, (_, _) => RGBA.Black)
+  val bg: PixelImage[RGBA] = PixelImage(imageWidth, imageHeight, (_, _) => RGBA.Black)
 
-  val imageWindow = ImagePanel(renderWithBG(init))
+  val imageWindow: ImagePanel[RGB] = ImagePanel(renderWithBG(init))
 
   //--- SHAPE -----
   val shapeSlider: IndexedSeq[JSlider] = for (n <- 0 until shapeRank) yield {
@@ -323,13 +322,13 @@ case class SimpleModelViewer(
       else renderer = MoMoRenderer(model, RGBA.BlackTransparent).cached(5)
 
       showExpressionModel = !showExpressionModel
-      updateToggleExpressioButton()
+      updateToggleExpressionButton()
       addRemoveExpressionTab()
       updateImage()
     }
   })
 
-  def updateToggleExpressioButton(): Unit = {
+  def updateToggleExpressionButton(): Unit = {
     if ( showExpressionModel ) toggleExpressionButton.setText("expressions off")
     else toggleExpressionButton.setText("expressions on")
   }
@@ -355,7 +354,7 @@ case class SimpleModelViewer(
     if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
       var file = fc.getSelectedFile
       if (file.isDirectory) file = new File(file,"instance.ply")
-      if ( !file.getName.endsWith(".ply")) file = new File( file.getAbsolutePath()+".ply")
+      if ( !file.getName.endsWith(".ply")) file = new File( file.getAbsolutePath+".ply")
       if (!file.exists() || askToOverwrite(file)) {
         MeshIO.write(VCM3D, file)
       } else {
@@ -382,7 +381,7 @@ case class SimpleModelViewer(
     if (fc.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
       var file = fc.getSelectedFile
       if (file.isDirectory) file = new File(file,"instance.png")
-      if ( !file.getName.endsWith(".png")) file = new File( file.getAbsolutePath()+".png")
+      if ( !file.getName.endsWith(".png")) file = new File( file.getAbsolutePath+".png")
       if (!file.exists() || askToOverwrite(file)) {
         PixelImageIO.write(img, file)
       } else {
@@ -446,7 +445,7 @@ case class SimpleModelViewer(
     {
       for {rpsFile <- askUserForRPSFile(new File("."))
            rpsParams <- RenderParameterIO.read(rpsFile)} {
-        implicit val order = Ordering.Double.TotalOrdering
+        implicit val order: Double.TotalOrdering.type = Ordering.Double.TotalOrdering
         val maxSigma = (rpsParams.momo.shape ++ rpsParams.momo.color ++ rpsParams.momo.expression).map(math.abs).max
         if ( maxSigma > maximalSigma ) {
           maximalSigma = math.ceil(maxSigma).toInt
