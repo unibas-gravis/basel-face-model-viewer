@@ -5,6 +5,8 @@
  ![Simple Morphable Model Viewer](Screenshot.png)
  
  For further information about the model and the surrounding theory and software please visit [http://gravis.dmi.unibas.ch/PMM](http://gravis.dmi.unibas.ch/PMM)
+ 
+ For questions, you can also ask on the [mailing list](https://groups.google.com/g/scalismo-faces).
 
 ## Requirements
 - installed [Java](http://www.oracle.com/technetwork/java/javase/downloads/index.html) (Version 8.0 or higher recommended)
